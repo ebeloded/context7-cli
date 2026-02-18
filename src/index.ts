@@ -101,23 +101,19 @@ function printHelp(): void {
   console.log(`${pc.bold("c7")} - Context7 CLI
 
 ${pc.bold("Usage:")}
-  c7 <library> <query>              Auto-resolve library and get docs
-  c7 get <library> <query>          Same (explicit subcommand)
-  c7 docs <library-id> <query>      Get docs by exact library ID
-  c7 search <name> [--query <ctx>]  Search and list matching libraries
+  c7 <library> <query>   Fetch docs (auto-resolves name to ID if needed)
+  c7 search <name>       Search and list matching libraries
 
 ${pc.bold("Options:")}
-  --type txt|json    Output format (default: txt)
-  --query, -q        Context string for relevance ranking (search only)
-  --help, -h         Show this help
+  --type txt|json        Output format (default: txt)
+  --help, -h             Show this help
 
 ${pc.bold("Examples:")}
   c7 react "how to use hooks"
   c7 /facebook/react "useEffect examples"
-  c7 get nextjs "server components with streaming"
-  c7 docs /vercel/next.js "middleware authentication"
-  c7 search express --query "REST API routing"
+  c7 nextjs "server components with streaming"
   c7 react "useState patterns" --type json
+  c7 search express
 
 ${pc.dim("Set CONTEXT7_API_KEY environment variable for higher rate limits.")}`);
 }
@@ -126,29 +122,18 @@ ${pc.dim("Set CONTEXT7_API_KEY environment variable for higher rate limits.")}`)
 // Commands
 // ---------------------------------------------------------------------------
 
-async function cmdSearch(name: string, query: string): Promise<void> {
-  const libs = await apiSearch(name, query);
+async function cmdSearch(name: string): Promise<void> {
+  const libs = await apiSearch(name, name);
   printLibraries(libs);
 }
 
-async function cmdDocs(
-  libraryId: string,
-  query: string,
-  type: "txt" | "json"
-): Promise<void> {
-  const out = await apiDocs(libraryId, query, type);
-  process.stdout.write(out);
-  if (!out.endsWith("\n")) process.stdout.write("\n");
-}
-
-async function cmdGet(
+async function cmdFetch(
   library: string,
   query: string,
   type: "txt" | "json"
 ): Promise<void> {
   let libraryId = library;
 
-  // If not already in /owner/repo format, resolve it first
   if (!/^\/[^/]+\/[^/]+/.test(library)) {
     process.stderr.write(pc.dim(`Resolving "${library}"...\n`));
     const libs = await apiSearch(library, query);
@@ -159,7 +144,9 @@ async function cmdGet(
     process.stderr.write(pc.dim(`Using ${libraryId}\n\n`));
   }
 
-  await cmdDocs(libraryId, query, type);
+  const out = await apiDocs(libraryId, query, type);
+  process.stdout.write(out);
+  if (!out.endsWith("\n")) process.stdout.write("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -176,8 +163,6 @@ for (let i = 0; i < argv.length; i++) {
     flags["help"] = "true";
   } else if (arg === "--type" || arg === "-t") {
     flags["type"] = argv[++i] ?? "txt";
-  } else if (arg === "--query" || arg === "-q") {
-    flags["query"] = argv[++i] ?? "";
   } else if (arg.startsWith("--")) {
     const eqIdx = arg.indexOf("=");
     if (eqIdx !== -1) {
@@ -206,33 +191,18 @@ try {
   if (cmd === "search") {
     const [name] = rest;
     if (!name) {
-      console.error(pc.red('Usage: c7 search <name> [--query <context>]'));
+      console.error(pc.red("Usage: c7 search <name>"));
       process.exit(1);
     }
-    await cmdSearch(name, flags["query"] ?? "documentation");
-  } else if (cmd === "docs") {
-    const [id, query] = rest;
-    if (!id || !query) {
-      console.error(pc.red("Usage: c7 docs <library-id> <query>"));
-      process.exit(1);
-    }
-    await cmdDocs(id, query, outputType);
-  } else if (cmd === "get") {
-    const [library, query] = rest;
-    if (!library || !query) {
-      console.error(pc.red("Usage: c7 get <library> <query>"));
-      process.exit(1);
-    }
-    await cmdGet(library, query, outputType);
+    await cmdSearch(name);
   } else {
-    // Default: treat first arg as library, second as query
     const [query] = rest;
     if (!query) {
       console.error(pc.red("Usage: c7 <library> <query>"));
       console.error(pc.dim('Run "c7 --help" for usage information.'));
       process.exit(1);
     }
-    await cmdGet(cmd, query, outputType);
+    await cmdFetch(cmd, query, outputType);
   }
 } catch (err) {
   console.error(pc.red(`Error: ${(err as Error).message}`));

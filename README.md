@@ -24,19 +24,17 @@ bun run build   # produces ./c7
 ## Usage
 
 ```
-c7 <library> <query>              Auto-resolve library name and fetch docs
-c7 get <library> <query>          Same (explicit subcommand)
-c7 docs <library-id> <query>      Fetch docs by exact library ID
-c7 search <name> [--query <ctx>]  Search and list matching libraries
+c7 <library> <query>   Fetch docs (auto-resolves name to ID if needed)
+c7 search <name>       Search and list matching libraries
 ```
 
 ## Examples
 
 ```sh
-# Auto-resolve a library by name and get docs
+# Auto-resolve a library name and get docs
 c7 react "how to use hooks"
 
-# Use an exact library ID
+# Use an exact library ID directly
 c7 /facebook/react "useEffect cleanup examples"
 
 # Next.js server components
@@ -45,11 +43,9 @@ c7 nextjs "server components with streaming"
 # Get output as JSON
 c7 react "useState patterns" --type json
 
-# Find matching libraries first
-c7 search express --query "REST API routing"
-
-# Then use the exact ID
-c7 docs /expressjs/express "middleware error handling"
+# Discover libraries first, then query by ID
+c7 search express
+c7 /expressjs/express "middleware error handling"
 ```
 
 ## Options
@@ -57,7 +53,6 @@ c7 docs /expressjs/express "middleware error handling"
 | Flag | Description |
 |------|-------------|
 | `--type txt\|json` | Output format (default: `txt`) |
-| `--query, -q` | Context string to rank search results (used with `search`) |
 | `--help, -h` | Show help |
 
 ## Authentication
@@ -86,6 +81,4 @@ Two REST API endpoints, mirroring the Context7 MCP tools:
 | CLI command | API endpoint | MCP equivalent |
 |-------------|-------------|----------------|
 | `c7 search` | `GET /api/v2/libs/search` | `resolve-library-id` |
-| `c7 docs` | `GET /api/v2/context` | `query-docs` |
-
-`c7 get` and the default shorthand combine both: resolve the name, then fetch docs.
+| `c7 <lib> <query>` | `GET /api/v2/context` (+ search if needed) | `resolve-library-id` + `query-docs` |
